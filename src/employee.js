@@ -1,7 +1,7 @@
 class Employee {
     constructor(account, fullName, email, password, startDate, basicSalary, position, monthlyWorkingHours) {
         this.account = account;
-        this.fullName = fullName.trim().replace(/\s+/g, " ");
+        this.fullName = fullName;
         this.email = email;
         this.password = password;
         this.startDate = startDate;

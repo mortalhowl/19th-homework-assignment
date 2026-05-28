@@ -38,6 +38,18 @@ class EmployeeValidation {
         if (!regex.test(value)) return this.showError(idError, message);
         return this.delError(idError);
     }
+
+    // Check Select
+    checkSelect(value, trueSelect, idError, message) {
+        if (!trueSelect.includes(value)) return this.showError(idError, message);
+        return this.delError(idError);
+    }
+
+    // Check Range
+    checkRange(value, min, max, idError, message) {
+        if (!(value >= min && value <= max)) return this.showError(idError, message);
+        return this.delError(idError);
+    }
 }
 
 export default EmployeeValidation;
