@@ -50,6 +50,12 @@ class EmployeeValidation {
         if (!(value >= min && value <= max)) return this.showError(idError, message);
         return this.delError(idError);
     }
+
+    // Check Fix value
+    checkFixValue(value, fixValue, idError, message) {
+        if (value === fixValue) return this.showError(idError, message);
+        return this.delError(idError);
+    }
 }
 
 export default EmployeeValidation;

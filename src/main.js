@@ -4,13 +4,10 @@ import EmployeeManagement from "./employeeManagement.js";
 import EmployeeValidation from "./employeeValidation.js";
 
 // Helper
-const getId = (value) => {
-    return document.getElementById(value)
-}
+const getId = (value) => document.getElementById(value)
 
-const getClass = (value, target) => {
-    return document.getElementsByClassName(value)[target];
-}
+
+const getClass = (value, target) => document.getElementsByClassName(value)[target];
 
 // Init
 const manage = new EmployeeManagement();
@@ -18,6 +15,22 @@ const validate = new EmployeeValidation();
 
 // DOM
 const btnAddEmployee = getId("btnThemNV");
+const employeeList = getId("tableDanhSach");
+const btnCloseEmployeeForm = getId("btnDong");
+const employeeForm = document.querySelector("form[role='form']");
+
+// Local Storage
+const getLocalStorage = (key, original) => {
+    const savedData = localStorage.getItem(key);
+    if (savedData) original = JSON.parse(savedData)
+    // console.log(original);
+
+    return original
+}
+
+const setLocalStorage = (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value))
+}
 
 // Get info employee
 const getInfoEmployee = () => {
@@ -35,7 +48,9 @@ const getInfoEmployee = () => {
 
 // data validation
 const dataValidation = (info) => {
-    let inValid = true;
+    // spread operator (kiến thức ngoài lề) để giữ lại các field ko cần clean
+    const cleanedData = { ...info };
+    let isValid = true;
 
     // check account
     let accountValid = true;
@@ -43,29 +58,27 @@ const dataValidation = (info) => {
     if (accountValid) accountValid = validate.checkLength(info.account, 4, 6, "tbTKNV", "Tài khoản phải từ 4 đến 6 ký số");
     if (accountValid) {
         const regex = /^\d{4,6}$/;
-        accountValid = validate.checkFormat(info.account, regex, "tbTKNV", "Tài khoản phải là ký số");
+        accountValid = validate.checkFormat(info.account, regex, "tbTKNV", "Tài khoản phải là số");
     }
 
     // check fullName
-
-    // Nếu chỉ xét ở mức regex cơ bản thì sẽ dùng [a-zA-ZÁ-ỹ\s] => hợp lú => tiềm ẩn rủi ro về các ký tự toán học cũng như các ký tự la tinh đến từ format [Á-ỹ] => Trên mạng bảo thế :))
-    // Nếu như chính xác hơn thì dùng \p{L} cùng với mã unicode
-    // về dấu cách => nếu xét về UX => nên cho nhập dư khoảng cách => format lại bằng cách thay thế nhiều dấu cách bằng 1 dấu cách => .replace(/\s+/g, " ")
-
     let fullNameValid = true;
+    // Xóa các khoảng trắng thừa rồi mới validate
     const cleanFullNameInput = info.fullName.trim().replace(/\s+/g, " ");
     fullNameValid = validate.checkEmpty(cleanFullNameInput, "tbTen", "Họ và tên không được để trống");
-    if (fullNameValid) fullNameValid = validate.checkLength(cleanFullNameInput, 4, 50, "tbTen", "Họ và tên phải từ 4 đến 50 ký tự"); // đề bài ko giới hạn ký tự, nhưng nó sẽ nguy hiểm nếu đây là 1 đoạn mã => chọn cách giới hạn cho an toàn
+    // đề bài ko giới hạn ký tự, nhưng nó sẽ nguy hiểm nếu đây là 1 đoạn mã độc=> chọn cách giới hạn cho an toàn
+    if (fullNameValid) fullNameValid = validate.checkLength(cleanFullNameInput, 4, 50, "tbTen", "Họ và tên phải từ 4 đến 50 ký tự");
     if (fullNameValid) {
         const regex = /^[\p{L}\s+]+$/u;
         fullNameValid = validate.checkFormat(cleanFullNameInput, regex, "tbTen", "Tên nhân viên phải là chữ");
     }
-    console.log(cleanFullNameInput);
-
+    // console.log(cleanFullNameInput);
+    cleanedData.fullName = cleanFullNameInput;
 
     // check email
     let emailValid = true;
     emailValid = validate.checkEmpty(info.email, "tbEmail", "Email không được để trống");
+    // ở FE ko bắt lỗi type = email ?; check length cho an toàn
     if (emailValid) emailValid = validate.checkLength(info.email, 4, 50, "tbEmail", "Email phải từ 4 đến 50 ký tự");
     if (emailValid) {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -84,7 +97,7 @@ const dataValidation = (info) => {
     // check startDate
     let startDateValid = true;
     startDateValid = validate.checkEmpty(info.startDate, "tbNgay", "Ngày vào làm không được để trống");
-    if (startDateValid) startDateValid = validate.checkLength(info.startDate, 10, 10, "tbNgay", "Ngày vào làm phải được định dạng mm/dd/yyyy");
+    if (startDateValid) startDateValid = validate.checkLength(info.startDate, 10, 10, "tbNgay", "Ngày vào làm phải có 10 ký tự");
     if (startDateValid) {
         const regex = /^(0?[1-9]|1[012])[\/\-](0?[1-9]|[12][0-9]|3[01])[\/\-]\d{4}$/;
         startDateValid = validate.checkFormat(info.startDate, regex, "tbNgay", "Ngày vào làm phải được định dạng mm/dd/yyyy");
@@ -92,20 +105,19 @@ const dataValidation = (info) => {
 
     // check basicSalary
     /**
-     * Vấn đề là lương khi nhập sẽ có nhiều cách nhập như 1000000 or 1.000.000 or 1,000,000 or 1 000 000 vậy lúc này validate như nào mới đúng?
-     * Nếu dùng regex thì chắc nhắn sẽ cực dài => Ưu tiên dùng js cho việc format số => Đọc trên mạng bảo z kkk
+     * lương khi nhập sẽ có nhiều cách nhập như 1000000 or 1.000.000 or 1,000,000 or 1 000 000 vậy lúc này validate như nào mới đúng?
      */
     let basicSalaryValid = true;
     const cleanBasicSalaryInput = info.basicSalary.replace(/[,.\s]/g, "");
-    console.log((cleanBasicSalaryInput));
-
+    // console.log((cleanBasicSalaryInput));
     basicSalaryValid = validate.checkEmpty(cleanBasicSalaryInput, "tbLuongCB", "Lương cơ bản không được để trống");
     if (basicSalaryValid) basicSalaryValid = validate.checkLength(cleanBasicSalaryInput, 7, 8, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000");
     if (basicSalaryValid) {
         const regex = /^\d{7,8}$/;
         basicSalaryValid = validate.checkFormat(cleanBasicSalaryInput, regex, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000");
     }
-    if (basicSalaryValid) basicSalaryValid = validate.checkRange(cleanBasicSalaryInput, 1000000, 20000000, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000")
+    if (basicSalaryValid) basicSalaryValid = validate.checkRange(cleanBasicSalaryInput, 1000000, 20000000, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000");
+    cleanedData.basicSalary = cleanBasicSalaryInput;
 
     // check position
     /**
@@ -115,7 +127,8 @@ const dataValidation = (info) => {
      */
     let positionValid = true;
     const truePosition = ["Sếp", "Trưởng phòng", "Nhân viên"];
-    positionValid = validate.checkSelect(info.position, truePosition, "tbChucVu", "Chức vụ không hợp lệ")
+    positionValid = validate.checkFixValue(info.position, "Chọn chức vụ", "tbChucVu", "Chức vụ không được để trống")
+    if (positionValid) positionValid = validate.checkSelect(info.position, truePosition, "tbChucVu", "Chức vụ không hợp lệ")
     // console.log(info.position);
 
     // check monthly working hours
@@ -128,8 +141,44 @@ const dataValidation = (info) => {
     }
     if (monthlyWorkingHoursValid) monthlyWorkingHoursValid = validate.checkRange(info.monthlyWorkingHours, 80, 200, "tbGiolam", "Giờ làm trong tháng phải là ký số, từ 80 đến 200 giờ")
 
-    inValid &= accountValid && fullNameValid && emailValid && passwordValid && startDateValid && basicSalaryValid && positionValid && monthlyWorkingHoursValid;
-    return inValid
+    isValid &= accountValid && fullNameValid && emailValid && passwordValid && startDateValid && basicSalaryValid && positionValid && monthlyWorkingHoursValid;
+    console.log(cleanedData);
+
+    return {
+        isValid: Boolean(isValid),
+        cleanedData: isValid ? cleanedData : null,
+    }
+}
+
+const renderEmployee = (e) => {
+    return `
+        <tr>
+            <td>${e.account}</td>
+            <td>${e.fullName}</td>
+            <td>${e.email}</td>
+            <td>${e.startDate}</td>
+            <td>${e.position}</td>
+            <td>${e.totalSalary.toLocaleString("vi-VN")}</td>
+            <td>${e.rating}</td>
+            <td>
+                <button onclick="handleEdit('${e.account}')" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
+                    Edit
+                </button>
+                <button onclick="handleDel('${e.account}')" class="btn btn-danger">
+                    Del
+                </button>
+            </td>
+        </tr>
+    `
+}
+
+const renderEmployeeList = (eList) => {
+    employeeList.innerHTML = eList.map(renderEmployee).join("");
+}
+
+const closeEmployeeForm = () => {
+    btnCloseEmployeeForm.click()
+    employeeForm.reset();
 }
 
 btnAddEmployee.addEventListener("click", () => {
@@ -137,22 +186,39 @@ btnAddEmployee.addEventListener("click", () => {
     // console.log(info);
 
     // validation
-    const checkDataValidaion = dataValidation(info);
+    const checkData = dataValidation(info);
 
-    if (checkDataValidaion) {
+    if (checkData.isValid) {
         const employee = new Employee(
-            info.account,
-            info.fullName,
-            info.email,
-            info.password,
-            info.startDate,
-            info.basicSalary,
-            info.position,
-            info.monthlyWorkingHours,
+            checkData.cleanedData.account,
+            checkData.cleanedData.fullName,
+            checkData.cleanedData.email,
+            checkData.cleanedData.password,
+            checkData.cleanedData.startDate,
+            checkData.cleanedData.basicSalary,
+            checkData.cleanedData.position,
+            checkData.cleanedData.monthlyWorkingHours,
         )
 
         manage.addEmployee(employee);
         console.log(manage.arr);
-    } else console.log(`Lỗi -1`);
+        setLocalStorage("EMPLOYEE_DATA", manage.arr);
+        renderEmployeeList(manage.arr);
 
+        closeEmployeeForm();
+    } else console.log(`Lỗi -1`);
 })
+
+const handleDel = (account) => {
+    manage.delEmployee(account);
+    setLocalStorage("EMPLOYEE_DATA", manage.arr);
+    renderEmployeeList(manage.arr)
+}
+window.handleDel = handleDel;
+
+const handleUpd = () => {
+
+}
+
+manage.arr = getLocalStorage("EMPLOYEE_DATA", manage.arr);
+renderEmployeeList(manage.arr);
