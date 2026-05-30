@@ -19,6 +19,11 @@ class EmployeeManagement {
         return idx
     }
 
+    getEmployeeByAccount(account) {
+        const idx = this.getIndexByAccount(account);
+        return this.arr[idx]
+    }
+
     addEmployee(employee) {
         this.arr.push(employee);
     }
@@ -31,12 +36,14 @@ class EmployeeManagement {
         }
     }
 
-    updEmployee() {
-
+    updEmployee(account, newEmployee) {
+        const idx = this.getIndexByAccount(account);
+        this.arr[idx] = newEmployee;
     }
 
-    findEmployeeByRating() {
-
+    findEmployeeByRating(value, arr) {
+        const searchResult = arr.filter(e => e.rating.toLowerCase().includes(value.trim()));
+        return searchResult
     }
 }
 

@@ -1,25 +1,36 @@
-// Import
+/**============================================================================================================================
+ * Import
+ ============================================================================================================================*/
 import Employee from "./employee.js";
 import EmployeeManagement from "./employeeManagement.js";
 import EmployeeValidation from "./employeeValidation.js";
 
-// Helper
+/**============================================================================================================================
+ * Helper
+ ============================================================================================================================*/
 const getId = (value) => document.getElementById(value)
 
-
-const getClass = (value, target) => document.getElementsByClassName(value)[target];
-
-// Init
+/**============================================================================================================================
+ * Init
+ ============================================================================================================================*/
 const manage = new EmployeeManagement();
 const validate = new EmployeeValidation();
 
-// DOM
+/**============================================================================================================================
+ * DOM
+ ============================================================================================================================*/
 const btnAddEmployee = getId("btnThemNV");
+const btnUpdEmployee = getId("btnCapNhat");
+const btnAdd = getId("btnThem");
+const txtModalHeader = getId("header-title");
 const employeeList = getId("tableDanhSach");
 const btnCloseEmployeeForm = getId("btnDong");
 const employeeForm = document.querySelector("form[role='form']");
+const searchRating = getId("searchName");
 
-// Local Storage
+/**============================================================================================================================
+ * Local Storage
+ ============================================================================================================================*/
 const getLocalStorage = (key, original) => {
     const savedData = localStorage.getItem(key);
     if (savedData) original = JSON.parse(savedData)
@@ -31,6 +42,10 @@ const getLocalStorage = (key, original) => {
 const setLocalStorage = (key, value) => {
     localStorage.setItem(key, JSON.stringify(value))
 }
+
+/**============================================================================================================================
+ * Info employee
+ ============================================================================================================================*/
 
 // Get info employee
 const getInfoEmployee = () => {
@@ -46,8 +61,23 @@ const getInfoEmployee = () => {
     return { account, fullName, email, password, startDate, basicSalary, position, monthlyWorkingHours }
 }
 
-// data validation
-const dataValidation = (info) => {
+// set info employee
+const setInfoEmployee = (info) => {
+    getId("tknv").value = info.account;
+    getId("tknv").disabled = true;
+    getId("name").value = info.fullName;
+    getId("email").value = info.email;
+    getId("password").value = info.password;
+    getId("datepicker").value = info.startDate;
+    getId("luongCB").value = info.basicSalary;
+    getId("chucvu").value = info.position;
+    getId("gioLam").value = info.monthlyWorkingHours;
+}
+
+/**============================================================================================================================
+ * data validation
+ ============================================================================================================================*/
+const dataValidation = (info, isAdd) => {
     // spread operator (kiến thức ngoài lề) để giữ lại các field ko cần clean
     const cleanedData = { ...info };
     let isValid = true;
@@ -59,6 +89,11 @@ const dataValidation = (info) => {
     if (accountValid) {
         const regex = /^\d{4,6}$/;
         accountValid = validate.checkFormat(info.account, regex, "tbTKNV", "Tài khoản phải là số");
+    }
+
+    if (isAdd && accountValid) {
+        // console.log(`Đã chạy check trùng id`);
+        accountValid = validate.checkAccountExist(info.account, manage.arr, "tbTKNV", "Tài khoản đã tồn tại")
     }
 
     // check fullName
@@ -117,7 +152,7 @@ const dataValidation = (info) => {
         basicSalaryValid = validate.checkFormat(cleanBasicSalaryInput, regex, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000");
     }
     if (basicSalaryValid) basicSalaryValid = validate.checkRange(cleanBasicSalaryInput, 1000000, 20000000, "tbLuongCB", "Lương cơ bản phải là số từ 1.000.000 - 20.000.000");
-    cleanedData.basicSalary = cleanBasicSalaryInput;
+    cleanedData.basicSalary = Number(cleanBasicSalaryInput);
 
     // check position
     /**
@@ -140,9 +175,9 @@ const dataValidation = (info) => {
         monthlyWorkingHoursValid = validate.checkFormat(info.monthlyWorkingHours, regex, "tbGiolam", "Giờ làm trong tháng phải là ký số, từ 80 đến 200 giờ");
     }
     if (monthlyWorkingHoursValid) monthlyWorkingHoursValid = validate.checkRange(info.monthlyWorkingHours, 80, 200, "tbGiolam", "Giờ làm trong tháng phải là ký số, từ 80 đến 200 giờ")
+    cleanedData.monthlyWorkingHours = Number(info.monthlyWorkingHours);
 
     isValid &= accountValid && fullNameValid && emailValid && passwordValid && startDateValid && basicSalaryValid && positionValid && monthlyWorkingHoursValid;
-    console.log(cleanedData);
 
     return {
         isValid: Boolean(isValid),
@@ -150,6 +185,9 @@ const dataValidation = (info) => {
     }
 }
 
+/**============================================================================================================================
+ * Render
+ ============================================================================================================================*/
 const renderEmployee = (e) => {
     return `
         <tr>
@@ -158,10 +196,10 @@ const renderEmployee = (e) => {
             <td>${e.email}</td>
             <td>${e.startDate}</td>
             <td>${e.position}</td>
-            <td>${e.totalSalary.toLocaleString("vi-VN")}</td>
+            <td>${e.totalSalary.toLocaleString("vi-VN")} VND</td>
             <td>${e.rating}</td>
             <td>
-                <button onclick="handleEdit('${e.account}')" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
+                <button onclick="handleUpd('${e.account}')" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
                     Edit
                 </button>
                 <button onclick="handleDel('${e.account}')" class="btn btn-danger">
@@ -176,17 +214,64 @@ const renderEmployeeList = (eList) => {
     employeeList.innerHTML = eList.map(renderEmployee).join("");
 }
 
+/**============================================================================================================================
+ * Action in page
+ ============================================================================================================================*/
+// Add
+btnAdd.addEventListener("click", () => {
+    btnUpdEmployee.style.display = "none";
+    btnAddEmployee.style.display = "block";
+    getId("tknv").disabled = false;
+    txtModalHeader.innerHTML = `Thêm nhân viên`;
+})
+
+// Del
+const handleDel = (account) => {
+    manage.delEmployee(account);
+    setLocalStorage("EMPLOYEE_DATA", manage.arr);
+    renderEmployeeList(manage.arr);
+}
+
+// Upd
+const handleUpd = (account) => {
+    btnUpdEmployee.style.display = "block";
+    btnAddEmployee.style.display = "none";
+    txtModalHeader.innerHTML = `Sửa nhân viên`;
+    const info = manage.getEmployeeByAccount(account);
+    setInfoEmployee(info);
+}
+
+// Search
+searchRating.addEventListener("input", () => {
+    const ratingValue = searchRating.value;
+    const listResult = manage.findEmployeeByRating(ratingValue, manage.arr);
+    renderEmployeeList(listResult);
+})
+
+/**============================================================================================================================
+ * action in modal
+ ============================================================================================================================*/
+// Helper
 const closeEmployeeForm = () => {
     btnCloseEmployeeForm.click()
     employeeForm.reset();
+
+    const element = document.getElementsByClassName("sp-thongbao");
+    for (let i = 0; i < element.length; i++) {
+        element[i].style.display = "none";
+    }
 }
 
+// Close
+btnCloseEmployeeForm.addEventListener("click", closeEmployeeForm)
+
+// Add
 btnAddEmployee.addEventListener("click", () => {
     const info = getInfoEmployee();
     // console.log(info);
 
     // validation
-    const checkData = dataValidation(info);
+    const checkData = dataValidation(info, true);
 
     if (checkData.isValid) {
         const employee = new Employee(
@@ -201,24 +286,44 @@ btnAddEmployee.addEventListener("click", () => {
         )
 
         manage.addEmployee(employee);
-        console.log(manage.arr);
+        // console.log(manage.arr);
         setLocalStorage("EMPLOYEE_DATA", manage.arr);
         renderEmployeeList(manage.arr);
 
         closeEmployeeForm();
     } else console.log(`Lỗi -1`);
+
 })
 
-const handleDel = (account) => {
-    manage.delEmployee(account);
-    setLocalStorage("EMPLOYEE_DATA", manage.arr);
-    renderEmployeeList(manage.arr)
-}
+// Upd
+btnUpdEmployee.addEventListener("click", () => {
+    const checkData = dataValidation(getInfoEmployee(), false);
+    if (checkData.isValid) {
+        const newEmployee = new Employee(
+            checkData.cleanedData.account,
+            checkData.cleanedData.fullName,
+            checkData.cleanedData.email,
+            checkData.cleanedData.password,
+            checkData.cleanedData.startDate,
+            checkData.cleanedData.basicSalary,
+            checkData.cleanedData.position,
+            checkData.cleanedData.monthlyWorkingHours,
+        );
+        console.log(newEmployee);
+
+        manage.updEmployee(newEmployee.account, newEmployee);
+        setLocalStorage("EMPLOYEE_DATA", manage.arr);
+        renderEmployeeList(manage.arr);
+
+        closeEmployeeForm();
+    }
+})
+
+/**============================================================================================================================
+ * Init
+ ============================================================================================================================*/
+window.handleUpd = handleUpd;
 window.handleDel = handleDel;
-
-const handleUpd = () => {
-
-}
 
 manage.arr = getLocalStorage("EMPLOYEE_DATA", manage.arr);
 renderEmployeeList(manage.arr);

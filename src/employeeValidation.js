@@ -56,6 +56,19 @@ class EmployeeValidation {
         if (value === fixValue) return this.showError(idError, message);
         return this.delError(idError);
     }
+
+    // check exist
+    checkAccountExist(value, arr, idError, message) {
+        for (let i = 0; i < arr.length; i++) {
+            console.log(value, arr[i].account);
+
+            if (String(arr[i].account) === String(value)) {
+                // console.log(`lỗi ko =`);
+                return this.showError(idError, message);
+            }
+        }
+        return this.delError(idError);
+    }
 }
 
 export default EmployeeValidation;

@@ -24,10 +24,10 @@ class Employee {
 
     calcRating() {
         const time = this.monthlyWorkingHours;
-        if (time >= 192) return "Nhân viên Xuất Sắc";
-        else if (time >= 176) return "Nhân viên Giỏi";
-        else if (time >= 160) return "Nhân viên Khá";
-        else if (time < 160 && time > 0) return "Nhân viên Trung Bình";
+        if (time >= 192) return "Xuất Sắc";
+        else if (time >= 176) return "Giỏi";
+        else if (time >= 160) return "Khá";
+        else if (time < 160 && time > 0) return "Trung Bình";
         else return "Không xác định";
     }
 }
